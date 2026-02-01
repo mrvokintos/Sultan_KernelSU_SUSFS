@@ -85,7 +85,7 @@ jobs:
           cd "$CONFIG"
 
           echo "Adding KernelSU..."
-          curl -LSs "https://raw.githubusercontent.com/WildKernels/Wild_KSU/wild/kernel/setup.sh" | bash -s wild
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s stable
 
       - name: Apply SUSFS Patches
         if: ${{ matrix.variant != 'WKSU' }}
@@ -215,7 +215,7 @@ jobs:
           cd "$CONFIG"
 
           echo "Running sed commands..."
-          sed -i 's/CONFIG_LOCALVERSION="-Sultan"/CONFIG_LOCALVERSION="-Sultan-Wild"/' ./arch/arm64/configs/${{ inputs.codename }}_defconfig
+          sed -i 's/CONFIG_LOCALVERSION="-Sultan"/CONFIG_LOCALVERSION="-Sultan"/' ./arch/arm64/configs/${{ inputs.codename }}_defconfig
 
       - name: Build the Kernel
         run: |
