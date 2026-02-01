@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: ["WKSU-SUSFS", "SHEDOWE"]
+        variant: ["KSUN", "KSUN-SUSFS"]
     steps:
       #- name: Maximize Build Space
       #  uses: AdityaGarg8/remove-unwanted-software@v5
@@ -88,7 +88,7 @@ jobs:
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -s stable
 
       - name: Apply SUSFS Patches
-        if: ${{ matrix.variant != 'WKSU' }}
+        if: ${{ matrix.variant != 'KSUN' }}
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
@@ -174,40 +174,6 @@ jobs:
           echo "CONFIG_IP_SET_HASH_NETPORT=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
           echo "CONFIG_IP_SET_HASH_NETIFACE=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
           echo "CONFIG_IP_SET_LIST_SET=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-
-      - name: Minimal Droidspaces Support
-        if: ${{ matrix.variant == 'SHEDOWE' }}
-        run: |
-          cd "$CONFIG"
-          # Minimal Droidspaces Support
-          echo "# Minimal Droidspaces Support" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "# Copyright (C) 2025 ravindu644 <droidcasts@protonmail.com>" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-
-          echo "# IPC mechanisms (required for tools that rely on shared memory and IPC namespaces)" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_SYSCTL=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_SYSVIPC=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_POSIX_MQUEUE=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-
-          echo "# Core namespace support (essential for assigning PID 1 and running any init system)" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_NAMESPACES=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_PID_NS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_UTS_NS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_IPC_NS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "# Primarily needed for older kernels (3.x)" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_MNT_NS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-
-          echo "# Control groups support (required for systemd)" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_CGROUPS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_CGROUP_DEVICE=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_MEMCG=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-
-          echo "# Device filesystem support (enables hardware access when --hw-access is enabled)" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_DEVTMPFS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-
-          echo "# Firmware loading support (optional, used when --hw-access is enabled)" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_FW_LOADER=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_FW_LOADER_USER_HELPER=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_FW_LOADER_COMPRESS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
       
       - name: Run sed and perl Commands
         run: |
@@ -215,7 +181,7 @@ jobs:
           cd "$CONFIG"
 
           echo "Running sed commands..."
-          sed -i 's/CONFIG_LOCALVERSION="-Sultan"/CONFIG_LOCALVERSION="-Sultan"/' ./arch/arm64/configs/${{ inputs.codename }}_defconfig
+          sed -i 's/CONFIG_LOCALVERSION="-Sultan"/CONFIG_LOCALVERSION="-miumiu-@cryptsn0w"/' ./arch/arm64/configs/${{ inputs.codename }}_defconfig
 
       - name: Build the Kernel
         run: |
