@@ -267,26 +267,20 @@ jobs:
             cat ./out/google-devices/zumapro/dts/*.dtb > ../AnyKernel3/dtb
           fi
 
-      - name: Create ZIP Files for Different Formats
+      - name: Prepare Artifact Name
+        id: artifact-name
         run: |
-          echo "Navigating to AnyKernel3 directory..."
-          cd ./AnyKernel3
-
-          # Zip the files in the AnyKernel3 directory with a new naming convention
           if [[ "${{ inputs.susfs }}" == "true" ]]; then
-            ZIP_NAME="${{ matrix.variant }}-SUSFS-${{ inputs.codename }}-A16-Sultan.zip"
+            echo "NAME=${{ matrix.variant }}-SUSFS-${{ inputs.codename }}-A16-Sultan" >> $GITHUB_OUTPUT
           else
-            ZIP_NAME="${{ matrix.variant }}-${{ inputs.codename }}-A16-Sultan.zip"
+            echo "NAME=${{ matrix.variant }}-${{ inputs.codename }}-A16-Sultan" >> $GITHUB_OUTPUT
           fi
-          echo "Creating zip file $ZIP_NAME..."
-          zip -r "../$ZIP_NAME" ./*
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-${{ inputs.codename }}-${{ matrix.variant }}
-          path: |
-            *.zip
+          name: ${{ steps.artifact-name.outputs.NAME }}
+          path: AnyKernel3/
 
       - name: Collect .rej files
         if: ${{ always() }}

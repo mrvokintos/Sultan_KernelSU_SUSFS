@@ -132,16 +132,24 @@ jobs:
 
       - name: Upload Release Assets Dynamically
         run: |
-          # Loop through all files in the downloaded-artifacts directory
-          for file in ./downloaded-artifacts/kernel-*/*; do
-              # Skip directories
-              if [ -d "$file" ]; then
+          # Loop through all directories in the downloaded-artifacts directory
+          # Each directory corresponds to an artifact
+          cd ./downloaded-artifacts
+          for dir in *; do
+              # Skip if not a directory
+              if [ ! -d "$dir" ]; then
                   continue
               fi
 
+              echo "Zipping artifact: $dir..."
+              # Navigate into the directory to zip contents at root
+              cd "$dir"
+              zip -r "../${dir}.zip" ./*
+              cd ..
+              
               # Upload the file to the GitHub release
-              echo "Uploading $file..."
-              gh release upload ${{ env.NEW_TAG }} "$file"
+              echo "Uploading ${dir}.zip..."
+              gh release upload ${{ env.NEW_TAG }} "${dir}.zip"
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
