@@ -21,11 +21,6 @@ on:
 
       # SUSFS toggle removed: build both SUSFS and non-SUSFS variants via matrix
 
-      next_branch:
-        required: false
-        type: string
-        default: dev
-
 jobs:
   build-kernel:
     name: build-kernel-sultan-kernelsu-next${{ matrix.susfs == true && '-susfs' || '' }}
@@ -65,7 +60,7 @@ jobs:
 
           # Clone repositories using the branch names
           git clone https://github.com/TheWildJames/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
-          git clone https://github.com/mrvokintos/kernel_patches.git
+          git clone https://github.com/TheWildJames/kernel_patches.git
           #git clone https://github.com/kerneltoast/${{ inputs.repo }}
           git clone https://github.com/kerneltoast/android_kernel_google_tensynos
           if [[ "${{ matrix.susfs }}" == "true" ]]; then
@@ -79,8 +74,8 @@ jobs:
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
 
-          echo "Adding KernelSU-Next from branch: ${{ inputs.next_branch }}..."
-          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/${{ inputs.next_branch }}/kernel/setup.sh" | bash -s ${{ inputs.next_branch }}
+          echo "Adding KernelSU-Next from branch: dev..."
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/setup.sh" | bash -s dev
 
       - name: Apply SUSFS Patches
         if: ${{ matrix.susfs }}
@@ -143,15 +138,6 @@ jobs:
               patch -p1 < ../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch || true
             fi
           fi
-
-          echo "Applying manual fixes for SUSFS..."
-          patch -p1 < ../kernel_patches/fix_base_c.patch || true
-          patch -p1 < ../kernel_patches/fix_sys_c.patch || true
-          
-          cd KernelSU-Next
-          patch -p1 < ../../kernel_patches/fix_app_profile.patch || true
-          patch -p1 < ../../kernel_patches/fix_ksu_c.patch || true
-          cd ..
 
       - name: Configure KernelSU
         run: |
