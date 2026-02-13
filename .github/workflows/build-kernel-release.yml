@@ -13,11 +13,8 @@ on:
         type: boolean
         default: false
 
-      susfs:
-        description: 'Enable SUSFS'
-        required: false
-        type: boolean
-        default: false
+      # SUSFS toggle removed: builds now produce both SUSFS and non-SUSFS variants
+
       next_branch:
         description: 'KernelSU-Next Branch'
         required: false
@@ -59,7 +56,6 @@ jobs:
       repo: "android_kernel_google_gs201"
       android_version: "android14"
       kernel_version: "6.1"
-      susfs: ${{ inputs.susfs }}
       next_branch: ${{ inputs.next_branch }}
       
   build-kernel-zuma:
@@ -71,7 +67,6 @@ jobs:
       repo: "android_kernel_google_zuma"
       android_version: "android14"
       kernel_version: "6.1"
-      susfs: ${{ inputs.susfs }}
       next_branch: ${{ inputs.next_branch }}
 
   build-kernel-zumapro:
@@ -83,7 +78,6 @@ jobs:
       repo: "android_kernel_google_zumapro"
       android_version: "android14"
       kernel_version: "6.1"
-      susfs: ${{ inputs.susfs }}
       next_branch: ${{ inputs.next_branch }}
 
   trigger-release:
