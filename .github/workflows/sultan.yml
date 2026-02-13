@@ -125,8 +125,12 @@ jobs:
 
           echo "KernelSU-Next patched successfully"
 
-
-          cp ../susfs4ksu/kernel_patches/include/linux/* ./include/linux/
+          # Copy include files if they exist
+          if [ -d "../../susfs4ksu/kernel_patches/include/linux" ]; then
+            cp -v ../../susfs4ksu/kernel_patches/include/linux/* ./include/linux/ || true
+          else
+            echo "Warning: SUSFS include directory not found at ../../susfs4ksu/kernel_patches/include/linux"
+          fi
 
           # Change to common directory and apply SUSFS patch
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
