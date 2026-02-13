@@ -6,6 +6,12 @@ permissions:
   
 on:
   workflow_dispatch:
+    inputs:
+      susfs:
+        description: 'Enable SUSFS'
+        required: false
+        type: boolean
+        default: true
         
 jobs:
   build-kernel-gs201:
@@ -16,6 +22,7 @@ jobs:
       repo: "android_kernel_google_gs201"
       android_version: "android14"
       kernel_version: "6.1"
+      susfs: ${{ inputs.susfs }}
       
   build-kernel-zuma:
     uses: ./.github/workflows/sultan.yml
@@ -25,6 +32,7 @@ jobs:
       repo: "android_kernel_google_zuma"
       android_version: "android14"
       kernel_version: "6.1"
+      susfs: ${{ inputs.susfs }}
 
   build-kernel-zumapro:
     uses: ./.github/workflows/sultan.yml
@@ -34,6 +42,7 @@ jobs:
       repo: "android_kernel_google_zumapro"
       android_version: "android14"
       kernel_version: "6.1"
+      susfs: ${{ inputs.susfs }}
 
   trigger-release:
     runs-on: ubuntu-latest
