@@ -96,7 +96,7 @@ jobs:
           patch -p1 < 10_enable_susfs_for_ksu.patch || true
             
           # Copy all fix patches for Next
-          cp ../../kernel_patches/next/susfs_fix_patches/v${SUSFS_VERSION}/*.patch ./
+          cp "../../kernel_patches/next/susfs_fix_patches/v${SUSFS_VERSION}/"*.patch ./
             
           echo "fixing Makefile/kbuild"
           patch -p1 < fix_Makefile.patch || true
@@ -125,20 +125,18 @@ jobs:
 
           echo "KernelSU-Next patched successfully"
 
-          # Copy include files if they exist
-          if [ -d "../../susfs4ksu/kernel_patches/include/linux" ]; then
-            cp -v ../../susfs4ksu/kernel_patches/include/linux/* ./include/linux/ || true
-          else
-            echo "Warning: SUSFS include directory not found at ../../susfs4ksu/kernel_patches/include/linux"
-          fi
-
           # Change to common directory and apply SUSFS patch
+          cd ../common
+          cp ../../susfs4ksu/kernel_patches/fs/* ./fs/ || true
+          cp ../../susfs4ksu/kernel_patches/include/linux/* ./include/linux/ || true
+          cp ../../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
-          cp ../kernel_patches/sultan/sys.c_fix.patch ./
-          patch -p1 < sys.c_fix.patch
 
-          cp ../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch ./
-          patch -p1 < base.c.patch
+          # Apply version-specific fixes for ${{ inputs.android_version }}-${{ inputs.kernel_version }}
+          if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "6.1" ]]; then
+            cp "../../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch" ./
+            patch -p1 < base.c.patch || true
+          fi
 
       - name: Configure KernelSU
         run: |
