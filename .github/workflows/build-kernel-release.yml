@@ -7,6 +7,12 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
+      sep_options:
+        description: '⬇️ OPTIONS ⬇️'
+        required: false
+        type: boolean
+        default: false
+
       susfs:
         description: 'Enable SUSFS'
         required: false
@@ -22,6 +28,13 @@ on:
         required: false
         type: boolean
         default: true
+
+      sep_devices:
+        description: '⬇️ DEVICES ⬇️'
+        required: false
+        type: boolean
+        default: false
+
       build_gs201:
         description: 'Build for GS201 (Pixel 7/7 Pro/7a)'
         required: false
