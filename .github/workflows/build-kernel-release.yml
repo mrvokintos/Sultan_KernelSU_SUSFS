@@ -17,17 +17,17 @@ on:
         description: 'Enable SUSFS'
         required: false
         type: boolean
-        default: true
-      build_wksu:
-        description: 'Build WKSU'
-        required: false
-        type: boolean
-        default: true
+        default: false
       build_next:
         description: 'Build KernelSU-Next'
         required: false
         type: boolean
         default: true
+      build_wksu:
+        description: 'Build WKSU'
+        required: false
+        type: boolean
+        default: false
 
       sep_devices:
         description: '⬇️ DEVICES ⬇️'
@@ -44,12 +44,12 @@ on:
         description: 'Build for Zuma (Pixel 8/8 Pro/8a)'
         required: false
         type: boolean
-        default: true
+        default: false
       build_zumapro:
         description: 'Build for ZumaPro (Pixel 9/9 Pro/9 Pro XL/9 Pro Fold)'
         required: false
         type: boolean
-        default: true
+        default: false
         
 jobs:
   build-kernel-gs201:
