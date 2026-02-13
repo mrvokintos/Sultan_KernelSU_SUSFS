@@ -22,9 +22,25 @@ on:
         required: false
         type: boolean
         default: true
+      build_gs201:
+        description: 'Build for GS201 (Pixel 7/7 Pro/7a)'
+        required: false
+        type: boolean
+        default: true
+      build_zuma:
+        description: 'Build for Zuma (Pixel 8/8 Pro/8a)'
+        required: false
+        type: boolean
+        default: true
+      build_zumapro:
+        description: 'Build for ZumaPro (Pixel 9/9 Pro/9 Pro XL/9 Pro Fold)'
+        required: false
+        type: boolean
+        default: true
         
 jobs:
   build-kernel-gs201:
+    if: ${{ inputs.build_gs201 == true }}
     uses: ./.github/workflows/sultan.yml
     secrets: inherit
     with:
@@ -37,6 +53,7 @@ jobs:
       build_next: ${{ inputs.build_next }}
       
   build-kernel-zuma:
+    if: ${{ inputs.build_zuma == true }}
     uses: ./.github/workflows/sultan.yml
     secrets: inherit
     with:
@@ -49,6 +66,7 @@ jobs:
       build_next: ${{ inputs.build_next }}
 
   build-kernel-zumapro:
+    if: ${{ inputs.build_zumapro == true }}
     uses: ./.github/workflows/sultan.yml
     secrets: inherit
     with:
