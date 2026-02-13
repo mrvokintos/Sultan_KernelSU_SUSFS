@@ -18,16 +18,14 @@ on:
         required: false
         type: boolean
         default: false
-      build_next:
-        description: 'Build KernelSU-Next'
+      next_branch:
+        description: 'KernelSU-Next Branch'
         required: false
-        type: boolean
-        default: true
-      build_wksu:
-        description: 'Build WKSU'
-        required: false
-        type: boolean
-        default: false
+        type: choice
+        options:
+          - dev
+          - stable
+        default: 'dev'
 
       sep_devices:
         description: '⬇️ DEVICES ⬇️'
@@ -62,8 +60,7 @@ jobs:
       android_version: "android14"
       kernel_version: "6.1"
       susfs: ${{ inputs.susfs }}
-      build_wksu: ${{ inputs.build_wksu }}
-      build_next: ${{ inputs.build_next }}
+      next_branch: ${{ inputs.next_branch }}
       
   build-kernel-zuma:
     if: ${{ inputs.build_zuma == true }}
@@ -75,8 +72,7 @@ jobs:
       android_version: "android14"
       kernel_version: "6.1"
       susfs: ${{ inputs.susfs }}
-      build_wksu: ${{ inputs.build_wksu }}
-      build_next: ${{ inputs.build_next }}
+      next_branch: ${{ inputs.next_branch }}
 
   build-kernel-zumapro:
     if: ${{ inputs.build_zumapro == true }}
@@ -88,8 +84,7 @@ jobs:
       android_version: "android14"
       kernel_version: "6.1"
       susfs: ${{ inputs.susfs }}
-      build_wksu: ${{ inputs.build_wksu }}
-      build_next: ${{ inputs.build_next }}
+      next_branch: ${{ inputs.next_branch }}
 
   trigger-release:
     runs-on: ubuntu-latest

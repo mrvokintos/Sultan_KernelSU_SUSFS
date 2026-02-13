@@ -22,14 +22,10 @@ on:
         required: false
         type: boolean
         default: true
-      build_wksu:
+      next_branch:
         required: false
-        type: boolean
-        default: true
-      build_next:
-        required: false
-        type: boolean
-        default: true
+        type: string
+        default: dev
 
 jobs:
   setup-matrix:
@@ -40,25 +36,15 @@ jobs:
       - id: set-matrix
         shell: bash
         run: |
-          VARIANTS=()
-          if [[ "${{ inputs.build_wksu }}" == "true" ]]; then
-            VARIANTS+=("\"WKSU\"")
-          fi
-          if [[ "${{ inputs.build_next }}" == "true" ]]; then
-            VARIANTS+=("\"Next\"")
-          fi
-          
-          # Join with comma
-          IFS=,
-          MATRIX_STR="[${VARIANTS[*]}]"
+          # Always build Next variant
+          MATRIX_STR='["Next"]'
           echo "Generated matrix: $MATRIX_STR"
           echo "matrix=$MATRIX_STR" >> $GITHUB_OUTPUT
 
   build-kernel:
-    name: build-kernel-sultan-kernelsu${{ inputs.susfs == true && '-susfs' || '' }} (${{ matrix.variant }})
+    name: build-kernel-sultan-kernelsu-next${{ inputs.susfs == true && '-susfs' || '' }}
     needs: setup-matrix
     runs-on: ubuntu-latest
-    if: needs.setup-matrix.outputs.matrix != '[]'
     strategy:
       fail-fast: false
       matrix:
@@ -116,17 +102,13 @@ jobs:
             git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
           fi
 
-      - name: Add KernelSU
+      - name: Add KernelSU-Next
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
 
-          echo "Adding KernelSU..."
-          if [[ "${{ matrix.variant }}" == "Next" ]]; then
-            curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/setup.sh" | bash -s stable
-          else
-            curl -LSs "https://raw.githubusercontent.com/WildKernels/Wild_KSU/wild/kernel/setup.sh" | bash -s wild
-          fi
+          echo "Adding KernelSU-Next from branch: ${{ inputs.next_branch }}..."
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/${{ inputs.next_branch }}/kernel/setup.sh" | bash -s ${{ inputs.next_branch }}
 
       - name: Apply SUSFS Patches
         if: ${{ inputs.susfs }}
@@ -136,24 +118,43 @@ jobs:
 
           SUSFS_VERSION="2.0.0"
 
-          if [[ "${{ matrix.variant }}" == "Next" ]]; then
-            echo "Patching KernelSU-Next..."
-            cd KernelSU-Next
-            cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
-            patch -p1 < 10_enable_susfs_for_ksu.patch || true
+          echo "Patching KernelSU-Next..."
+          cd KernelSU-Next
+          cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
+          patch -p1 < 10_enable_susfs_for_ksu.patch || true
             
-            # Copy all fix patches for Next
-            cp ../../kernel_patches/next/susfs_fix_patches/v${SUSFS_VERSION}/*.patch ./
+          # Copy all fix patches for Next
+          cp ../../kernel_patches/next/susfs_fix_patches/v${SUSFS_VERSION}/*.patch ./
             
-            # Apply all patches
-            for patch in *.patch; do
-               if [[ "$patch" != "10_enable_susfs_for_ksu.patch" ]]; then
-                   echo "Applying $patch..."
-                   patch -p1 < "$patch" || true
-               fi
-            done
-            cd ..
-          fi
+          echo "fixing Makefile/kbuild"
+          patch -p1 < fix_Makefile.patch || true
+          echo "fixing allowlist.c"
+          patch -p1 < fix_allowlist.c.patch || true
+          echo "fixing apk_sign.c"
+          patch -p1 < fix_apk_sign.c.patch || true
+          echo "fixing kernel_umount.c"
+          patch -p1 < fix_kernel_umount.c.patch || true
+          echo "fixing ksu.c"
+          patch -p1 < fix_ksu.c.patch || true
+          echo "fixing ksud.c"
+          patch -p1 < fix_ksud.c.patch || true
+          echo "fixing selinux.c"
+          patch -p1 < fix_selinux.c.patch || true
+          echo "fixing setuid_hook.c"
+          patch -p1 < fix_setuid_hook.c.patch || true
+          echo "fixing sucompat.c"
+          patch -p1 < fix_sucompat.c.patch || true
+          echo "fixing supercalls.c"
+          patch -p1 < fix_supercalls.c.patch || true
+          echo "overwriting hook mode"
+          patch -p1 < overwrite_hook_mode.patch || true
+          echo "patching ksu_toolkit"
+          patch -p1 < ksu_toolkit.patch || true
+
+          echo "KernelSU-Next patched successfully"
+          
+          done
+          cd ..
 
           echo "Applying SUSFS patches..."
 
@@ -271,9 +272,9 @@ jobs:
         id: artifact-name
         run: |
           if [[ "${{ inputs.susfs }}" == "true" ]]; then
-            echo "NAME=${{ matrix.variant }}-SUSFS-${{ inputs.codename }}-A16-Sultan" >> $GITHUB_OUTPUT
+            echo "NAME=Next-SUSFS-${{ inputs.codename }}-A16-Sultan" >> $GITHUB_OUTPUT
           else
-            echo "NAME=${{ matrix.variant }}-${{ inputs.codename }}-A16-Sultan" >> $GITHUB_OUTPUT
+            echo "NAME=Next-${{ inputs.codename }}-A16-Sultan" >> $GITHUB_OUTPUT
           fi
 
       - name: Upload Build Artifacts
@@ -317,12 +318,12 @@ jobs:
         run: |
           set -euo pipefail
           cd "$GITHUB_WORKSPACE"
-          zip -r "rej-${{ inputs.codename }}-${{ matrix.variant }}.zip" rej
+          zip -r "rej-${{ inputs.codename }}-Next.zip" rej
 
       - name: Upload .rej bundle
         if: ${{ always() && steps.collect_rej.outputs.found == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: rej-${{ inputs.codename }}-${{ matrix.variant }}
+          name: rej-${{ inputs.codename }}-Next
           path: |
-            rej-${{ inputs.codename }}-${{ matrix.variant }}.zip
+            rej-${{ inputs.codename }}-Next.zip
