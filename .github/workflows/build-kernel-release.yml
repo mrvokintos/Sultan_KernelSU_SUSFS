@@ -3,7 +3,6 @@ name: Build and Release Sultan Kernels
 permissions:
   contents: write  # Allow writing to repository contents (for pushing tags)
   actions: write   # Allows triggering actions
-  workflows: write
   
 on:
   workflow_dispatch:
@@ -116,25 +115,14 @@ jobs:
       # Get the Latest Tag from GitHub
       - name: Generate and Create New Tag
         run: |
-            # Fetch the latest tag from GitHub (using git ls-remote to ensure we get the absolute latest)
-            # Filter for tags matching vX.X.X-rX format and sort them by version
-            LATEST_TAG=$(git ls-remote --tags origin | awk -F/ '{print $3}' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-r[0-9]+$' | sort -V | tail -n1)
-            
+            # Fetch the latest tag from GitHub (this is the latest tag based on the GitHub API)
+            LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
             if [ -z "$LATEST_TAG" ]; then
-              LATEST_TAG="v1.0.0-r0"
-              echo "No existing tags found. Starting with $LATEST_TAG"
-            else
-              echo "Latest remote tag found: $LATEST_TAG"
+              LATEST_TAG="v2.0.0-r0"  # Default to v1.5.7-0 if no tag exists
             fi
             
-            # Extract base version and suffix
-            # e.g., v2.0.0-r5 -> v2.0.0 and 5
-            BASE_VERSION=$(echo "$LATEST_TAG" | awk -F'-r' '{print $1}')
-            SUFFIX=$(echo "$LATEST_TAG" | awk -F'-r' '{print $2}')
-            
-            # Increment suffix
-            NEW_SUFFIX=$((SUFFIX + 1))
-            NEW_TAG="${BASE_VERSION}-r${NEW_SUFFIX}"
+            # Increment the suffix (e.g., v1.5.7-0 becomes v1.5.7-1)
+            NEW_TAG=$(echo "$LATEST_TAG" | awk -F'-r' '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-r%d", $1, suffix}')
             
             # Output the new tag to be used
             echo "New tag: $NEW_TAG"
