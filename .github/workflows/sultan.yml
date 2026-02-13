@@ -22,14 +22,47 @@ on:
         required: false
         type: boolean
         default: true
+      build_wksu:
+        required: false
+        type: boolean
+        default: true
+      build_next:
+        required: false
+        type: boolean
+        default: true
 
 jobs:
-  build-kernel-sultan-kernelsu-susfs:
+  setup-matrix:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        shell: bash
+        run: |
+          VARIANTS=()
+          if [[ "${{ inputs.build_wksu }}" == "true" ]]; then
+            VARIANTS+=("\"WKSU\"")
+          fi
+          if [[ "${{ inputs.build_next }}" == "true" ]]; then
+            VARIANTS+=("\"Next\"")
+          fi
+          
+          # Join with comma
+          IFS=,
+          MATRIX_STR="[${VARIANTS[*]}]"
+          echo "Generated matrix: $MATRIX_STR"
+          echo "matrix=$MATRIX_STR" >> $GITHUB_OUTPUT
+
+  build-kernel:
+    name: build-kernel-sultan-kernelsu${{ inputs.susfs == true && '-susfs' || '' }} (${{ matrix.variant }})
+    needs: setup-matrix
+    runs-on: ubuntu-latest
+    if: needs.setup-matrix.outputs.matrix != '[]'
     strategy:
       fail-fast: false
       matrix:
-        variant: ["WKSU", "Next"]
+        variant: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     steps:
       #- name: Maximize Build Space
       #  uses: AdityaGarg8/remove-unwanted-software@v5

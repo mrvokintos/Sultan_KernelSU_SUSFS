@@ -12,6 +12,16 @@ on:
         required: false
         type: boolean
         default: true
+      build_wksu:
+        description: 'Build WKSU'
+        required: false
+        type: boolean
+        default: true
+      build_next:
+        description: 'Build KernelSU-Next'
+        required: false
+        type: boolean
+        default: true
         
 jobs:
   build-kernel-gs201:
@@ -23,6 +33,8 @@ jobs:
       android_version: "android14"
       kernel_version: "6.1"
       susfs: ${{ inputs.susfs }}
+      build_wksu: ${{ inputs.build_wksu }}
+      build_next: ${{ inputs.build_next }}
       
   build-kernel-zuma:
     uses: ./.github/workflows/sultan.yml
@@ -33,6 +45,8 @@ jobs:
       android_version: "android14"
       kernel_version: "6.1"
       susfs: ${{ inputs.susfs }}
+      build_wksu: ${{ inputs.build_wksu }}
+      build_next: ${{ inputs.build_next }}
 
   build-kernel-zumapro:
     uses: ./.github/workflows/sultan.yml
@@ -43,6 +57,8 @@ jobs:
       android_version: "android14"
       kernel_version: "6.1"
       susfs: ${{ inputs.susfs }}
+      build_wksu: ${{ inputs.build_wksu }}
+      build_next: ${{ inputs.build_next }}
 
   trigger-release:
     runs-on: ubuntu-latest
