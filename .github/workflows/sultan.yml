@@ -90,12 +90,20 @@ jobs:
 
           SUSFS_VERSION="2.0.0"
 
-          echo "Patching KernelSU-Next..."
+          echo "Copying SUSFS patches..."
+          # Copy SUSFS patches to root
+          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./
+          mkdir -p ./fs/
+          mkdir -p ./include/linux/
+          cp ../susfs4ksu/kernel_patches/fs/* ./fs/ 2>/dev/null || true
+          cp ../susfs4ksu/kernel_patches/include/linux/* ./include/linux/ 2>/dev/null || true
+
+          echo "Patching KernelSU-Next for SUSFS..."
           cd KernelSU-Next
           cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
           patch -p1 < 10_enable_susfs_for_ksu.patch || true
             
-          # Copy all fix patches for Next
+          # Copy all fix patches for Next SUSFS support
           cp "../../kernel_patches/next/susfs_fix_patches/v${SUSFS_VERSION}/"*.patch ./
             
           echo "fixing Makefile/kbuild"
@@ -125,32 +133,14 @@ jobs:
 
           echo "KernelSU-Next patched successfully"
 
-          # Copy SUSFS include files if they exist
-          if [ -d "../../susfs4ksu/kernel_patches/include/linux" ]; then
-            cp -v ../../susfs4ksu/kernel_patches/include/linux/* ./include/linux/ || true
-          else
-            echo "Warning: SUSFS include directory not found at ../../susfs4ksu/kernel_patches/include/linux"
-          fi
-
-          # Copy fs patches to common if they exist
-          if [ -d "../../susfs4ksu/kernel_patches/fs" ]; then
-            cp ../../susfs4ksu/kernel_patches/fs/* ../common/fs/ 2>/dev/null || true
-          fi
-
-          # Apply additional SUSFS patch if it exists
-          if [ -f "../../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch" ]; then
-            cd ../common
-            cp "../../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch" ./
-            patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
-            cd ../KernelSU-Next
-          fi
-
-          # Apply version-specific fixes
+          # Return to kernel root and apply SUSFS patch
+          cd ..
+          patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
+          
+          # Apply version-specific fixes if they exist for a14-6.1
           if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "6.1" ]]; then
-            if [ -f "../../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch" ]; then
-              cd ../common
-              cp "../../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch" ./
-              patch -p1 < base.c.patch || true
+            if [ -f "../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch" ]; then
+              patch -p1 < ../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch || true
             fi
           fi
 
