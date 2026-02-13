@@ -28,41 +28,10 @@ on:
         default: dev
 
 jobs:
-  setup-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - id: set-matrix
-        shell: bash
-        run: |
-          # Always build Next variant
-          MATRIX_STR='["Next"]'
-          echo "Generated matrix: $MATRIX_STR"
-          echo "matrix=$MATRIX_STR" >> $GITHUB_OUTPUT
-
   build-kernel:
     name: build-kernel-sultan-kernelsu-next${{ inputs.susfs == true && '-susfs' || '' }}
-    needs: setup-matrix
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     steps:
-      #- name: Maximize Build Space
-      #  uses: AdityaGarg8/remove-unwanted-software@v5
-      #  with:
-      #    remove-dotnet: 'true'          # Frees ~2 GB
-      #    remove-android: 'true'         # Frees ~9 GB
-      #    remove-haskell: 'true'         # Frees ~5.2 GB
-      #    remove-codeql: 'true'          # Frees ~5.4 GB
-      #    remove-docker-images: 'true'   # Frees ~3.2 GB
-      #    remove-large-packages: 'true'  # Frees ~3.1 GB
-      #    remove-swapfile: 'true'        # Frees ~4 GB
-      #    remove-cached-tools: 'false'   # Avoid unless confirmed safe
-      #    verbose: 'true'                # Enable detailed logging
-
       - name: Download and extract GCC 14.2.0 toolchain
         run: |
           echo "Downloading GCC 14.2.0 cross-compiler toolchain..."
@@ -152,15 +121,8 @@ jobs:
           patch -p1 < ksu_toolkit.patch || true
 
           echo "KernelSU-Next patched successfully"
-          
-          done
-          cd ..
 
-          echo "Applying SUSFS patches..."
 
-          # Copy SUSFS patches
-          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./
-          cp ../susfs4ksu/kernel_patches/fs/* ./fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./include/linux/
 
           # Change to common directory and apply SUSFS patch
