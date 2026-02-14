@@ -37,7 +37,7 @@ Special thanks to the open-source community for their contributions!
 
 # Support
 
-If you encounter any problems or need help, feel free to open the issue in this repository or contact me on [Telegram](https://t.me/mr_vokintos)
+If you encounter any problems or need help, feel free to open the issue in this repository or contact me on [Telegram](https://t.me/mrvokintos)
 
 ---
 
@@ -51,5 +51,5 @@ Flashing this kernel will void your warranty, and there is always a risk of bric
 
 # Contacts
 
-[Telegram](https://t.me/mr_vokintos)
+[Telegram](https://t.me/mrvokintos)
 
