@@ -100,14 +100,14 @@ jobs:
       REPO_OWNER: mrvokintos
       REPO_NAME: Sultan_KernelSU_SUSFS
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      RELEASE_NAME: "Sultan Kernels With KernelSU Next & SUSFS v2.0.0"
+      RELEASE_NAME: "Sultan Kernels With KernelSU Next & SUSFS"
 
     steps:
       # Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Get KernelSU Next version
+      # Get KernelSU Next version // inspired by https://github.com/TheSillyOk/sh/blob/main/get_ksuver.sh
       - name: Get KernelSU Next Version
         id: ksu_version
         run: |
@@ -221,19 +221,16 @@ jobs:
       - name: Generate Release Notes
         run: |
           cat << EOF > release_notes.md
-          This release contains KernelSU Next and SUSFS v2.0.0
+          This release contains KernelSU Next and SUSFS
+          Fork by [mrvokintos](https://github.com/mrvokintos)
 
           ### Versions:
           - **KernelSU Next**: [${{ env.KSUN_VERSION }}](${{ env.KSUN_URL }})
-          - **SUSFS**: v2.0.0
+          - **SUSFS**: [v2.0.0](https://gitlab.com/simonpunk/susfs4ksu/-/tree/gki-android14-6.1)
 
           ### Links:
-          - **SUSFS Module**: https://github.com/sidex15/ksu_module_susfs
           - **KernelSU Next Manager**: https://t.me/ksunext_ci
-
-          ### Features:
-          - [+] KernelSU Next ${{ env.KSUN_VERSION }}
-          - [+] SUSFS v2.0.0
+          - **SUSFS Module**: https://github.com/sidex15/ksu_module_susfs
           EOF
 
       # Create GitHub Release and upload files
@@ -253,9 +250,18 @@ jobs:
           # Loop through all directories in the downloaded-artifacts directory
           # Each directory corresponds to an artifact
           cd ./downloaded-artifacts
-          for dir in *; do
+          
+          # Custom sort: by device (gs201, zuma, zumapro), then by type (Next before Next-SUSFS)
+          # This creates a sort key by replacing SUSFS with a character that sorts after regular Next
+          for dir in $(ls -1 | sed 's/Next-SUSFS/Next~SUSFS/g' | sort | sed 's/Next~SUSFS/Next-SUSFS/g'); do
               # Skip if not a directory
               if [ ! -d "$dir" ]; then
+                  continue
+              fi
+              
+              # Skip .rej bundles (debug artifacts)
+              if [[ "$dir" == rej-* ]]; then
+                  echo "Skipping debug artifact: $dir"
                   continue
               fi
 
