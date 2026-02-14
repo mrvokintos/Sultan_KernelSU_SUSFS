@@ -15,10 +15,23 @@ on:
         default: false
 
       build_with_susfs:
-        description: 'Build with SUSFS (if enabled, builds both with and without SUSFS)'
-        required: false
-        type: boolean
-        default: false
+        description: 'Include SUSFS? (if true, builds both w/ and w/o SUSFS)'
+        required: true
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+        default: 'false'
+
+      upload_type:
+        description: 'Upload Type'
+        required: true
+        type: choice
+        options:
+          - 'artifact'
+          - 'pre-release'
+          - 'release'
+        default: 'artifact'
 
       sep_devices:
         description: '⬇️ DEVICES ⬇️'
@@ -52,7 +65,7 @@ jobs:
       repo: "android_kernel_google_gs201"
       android_version: "android14"
       kernel_version: "6.1"
-      build_with_susfs: ${{ inputs.build_with_susfs }}
+      build_with_susfs: ${{ inputs.build_with_susfs == 'true' }}
       
   build-kernel-zuma:
     if: ${{ inputs.build_zuma == true }}
@@ -63,7 +76,7 @@ jobs:
       repo: "android_kernel_google_zuma"
       android_version: "android14"
       kernel_version: "6.1"
-      build_with_susfs: ${{ inputs.build_with_susfs }}
+      build_with_susfs: ${{ inputs.build_with_susfs == 'true' }}
 
   build-kernel-zumapro:
     if: ${{ inputs.build_zumapro == true }}
@@ -74,9 +87,10 @@ jobs:
       repo: "android_kernel_google_zumapro"
       android_version: "android14"
       kernel_version: "6.1"
-      build_with_susfs: ${{ inputs.build_with_susfs }}
+      build_with_susfs: ${{ inputs.build_with_susfs == 'true' }}
 
   trigger-release:
+    if: ${{ inputs.upload_type != 'artifact' }}
     runs-on: ubuntu-latest
     needs:
         - build-kernel-gs201
@@ -97,21 +111,71 @@ jobs:
       - name: Get KernelSU Next Version
         id: ksu_version
         run: |
-          # Get the latest commit hash from KernelSU-Next dev branch
-          KSUN_COMMIT=$(git ls-remote https://github.com/KernelSU-Next/KernelSU-Next.git dev | awk '{print $1}')
-          KSUN_SHORT_COMMIT=$(echo $KSUN_COMMIT | cut -c1-7)
+          OWNER="KernelSU-Next"
+          REPO="KernelSU-Next"
+          REF="dev"
+          API_URL="https://api.github.com"
           
-          # Get version from version file
-          KSUN_VERSION=$(curl -s "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/ksu_version" | head -n1 || echo "unknown")
+          # Get commit count
+          COMMIT_COUNT=$(curl --silent -I -H "Accept: application/vnd.github.v3+json" "$API_URL/repos/$OWNER/$REPO/commits?sha=$REF&per_page=1" | grep -i "^link:" | sed -n 's/.*page=\([0-9]*\)>; rel="last".*/\1/p')
+          if [ -z "$COMMIT_COUNT" ]; then
+            COMMIT_COUNT=$(curl --silent -H "Accept: application/vnd.github.v3+json" "$API_URL/repos/$OWNER/$REPO/commits?sha=$REF&per_page=100" | jq '. | length')
+          fi
           
-          # Create version string
-          KSUN_FULL_VERSION="${KSUN_VERSION} (${KSUN_SHORT_COMMIT})"
-          KSUN_URL="https://github.com/KernelSU-Next/KernelSU-Next/commit/${KSUN_COMMIT}"
+          echo "Commit count: $COMMIT_COUNT"
           
-          echo "KSUN_VERSION=${KSUN_FULL_VERSION}" >> $GITHUB_ENV
+          # Try to get formula from Kbuild or Makefile
+          FORMULA_FILE=""
+          for file in Kbuild Makefile; do
+            for type in "refs/heads/" "refs/tags/" "/"; do
+              curl -LSs "https://github.com/$OWNER/$REPO/raw/${type}${REF}/kernel/$file" > temp_file 2>/dev/null || continue
+              
+              if grep -q "KSU_VERSION" temp_file 2>/dev/null; then
+                FORMULA_FILE="temp_file"
+                echo "Found formula in: $file (type: $type)"
+                break 2
+              fi
+              rm -f temp_file
+            done
+          done
+          
+          if [ -z "$FORMULA_FILE" ]; then
+            echo "Error: Could not find KSU version formula"
+            KSUN_VERSION="unknown"
+          else
+            # Extract version formula
+            FORMULA_LINE=$(grep -E 'KSU_VERSION *:?=.*?(KSU_GIT[^_]*_VERSION|rev-list)' "$FORMULA_FILE" || true)
+            echo "Formula line: $FORMULA_LINE"
+            
+            if [[ "$FORMULA_LINE" == *"KSU"* ]]; then
+              # Extract math expression
+              MATH_EXPR=$(echo "$FORMULA_LINE" | sed 's/.*expr //;s/))//' | xargs)
+              echo "Math expression: $MATH_EXPR"
+              
+              if [ -n "$MATH_EXPR" ]; then
+                # Replace variables with commit count and calculate
+                CALC_STRING=$(echo "$MATH_EXPR" | sed -E "s/\\$\((KSU_GIT_VERSION|KSU_GITHUB_VERSION_COMMIT)\)|\\$\(shell.*rev-list[^\)]*\)/$COMMIT_COUNT/;s/\)//;s/\(//")
+                echo "Calculation string: $CALC_STRING"
+                KSUN_VERSION=$(echo "$CALC_STRING" | bc)
+              fi
+            fi
+            
+            # If still empty, try to find hardcoded version
+            if [ -z "$KSUN_VERSION" ]; then
+              KSUN_VERSION=$(grep -E '^ccflags-y \+= -DKSU_VERSION=[0-9]+' "$FORMULA_FILE" | head -n 1 | grep -oP '[0-9]+' || true)
+            fi
+            
+            rm -f temp_file
+          fi
+          
+          # Get commit hash for URL
+          KSUN_COMMIT=$(git ls-remote https://github.com/$OWNER/$REPO.git $REF | awk '{print $1}')
+          KSUN_URL="https://github.com/$OWNER/$REPO/commit/${KSUN_COMMIT}"
+          
+          echo "KSUN_VERSION=${KSUN_VERSION}" >> $GITHUB_ENV
           echo "KSUN_URL=${KSUN_URL}" >> $GITHUB_ENV
           
-          echo "KernelSU Next version: ${KSUN_FULL_VERSION}"
+          echo "KernelSU Next version: ${KSUN_VERSION}"
           echo "Commit URL: ${KSUN_URL}"
 
       # Get the Latest Tag from GitHub
@@ -172,13 +236,15 @@ jobs:
           - [+] SUSFS v2.0.0
           EOF
 
-      # Create GitHub Release and upload files if make_release is true
+      # Create GitHub Release and upload files
       - name: Create GitHub Release
+        id: create_release
         uses: actions/create-release@v1
         with:
-          tag_name: ${{ env.NEW_TAG }}  # Use the generated tag for the release
-          release_name: ${{ env.RELEASE_NAME }}  # Pass the RELEASE_NAME to the action
+          tag_name: ${{ env.NEW_TAG }}
+          release_name: ${{ env.RELEASE_NAME }}
           body_path: release_notes.md
+          prerelease: ${{ inputs.upload_type == 'pre-release' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
