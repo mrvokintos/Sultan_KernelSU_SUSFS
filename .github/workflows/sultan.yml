@@ -1,10 +1,10 @@
 name: Sultan
 permissions:
-  contents: write # Allow writing to repository contents (for pushing tags)
-  actions: write # Allows triggering actions
+  contents: write
+  actions: write
 
 on:
-  workflow_call: # This allows this workflow to be called from another workflow
+  workflow_call:
     inputs:
       codename:
         required: true
@@ -18,28 +18,20 @@ on:
       kernel_version:
         required: true
         type: string
+      build_with_susfs:
+        required: false
+        type: boolean
+        default: false
 
 jobs:
-  build-kernel-sultan-kernelsu-susfs:
+  build-kernel:
+    name: build-kernel-sultan-kernelsu-next${{ matrix.susfs == true && '-susfs' || '' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        variant: ["WKSU-SUSFS", "SHEDOWE"]
+        susfs: ${{ inputs.build_with_susfs && fromJSON('[true, false]') || fromJSON('[false]') }}
     steps:
-      #- name: Maximize Build Space
-      #  uses: AdityaGarg8/remove-unwanted-software@v5
-      #  with:
-      #    remove-dotnet: 'true'          # Frees ~2 GB
-      #    remove-android: 'true'         # Frees ~9 GB
-      #    remove-haskell: 'true'         # Frees ~5.2 GB
-      #    remove-codeql: 'true'          # Frees ~5.4 GB
-      #    remove-docker-images: 'true'   # Frees ~3.2 GB
-      #    remove-large-packages: 'true'  # Frees ~3.1 GB
-      #    remove-swapfile: 'true'        # Frees ~4 GB
-      #    remove-cached-tools: 'false'   # Avoid unless confirmed safe
-      #    verbose: 'true'                # Enable detailed logging
-
       - name: Download and extract GCC 14.2.0 toolchain
         run: |
           echo "Downloading GCC 14.2.0 cross-compiler toolchain..."
@@ -71,44 +63,82 @@ jobs:
           # Clone repositories using the branch names
           git clone https://github.com/TheWildJames/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
           git clone https://github.com/TheWildJames/kernel_patches.git
-          #git clone https://github.com/kerneltoast/${{ inputs.repo }}
           git clone https://github.com/kerneltoast/android_kernel_google_tensynos
-          if [ "${{ matrix.variant }}" != "WKSU" ]; then
+          if [[ "${{ matrix.susfs }}" == "true" ]]; then
             SUSFS_BRANCH="gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}"
             echo "Using branch for SUSFS: $SUSFS_BRANCH"
             git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
           fi
 
-      - name: Add KernelSU
+      - name: Add KernelSU-Next
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
 
-          echo "Adding KernelSU..."
-          curl -LSs "https://raw.githubusercontent.com/WildKernels/Wild_KSU/wild/kernel/setup.sh" | bash -s wild
+          echo "Adding KernelSU-Next from branch: dev..."
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/setup.sh" | bash -s dev
 
       - name: Apply SUSFS Patches
-        if: ${{ matrix.variant != 'WKSU' }}
+        if: ${{ matrix.susfs }}
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
 
           SUSFS_VERSION="2.0.0"
 
-          echo "Applying SUSFS patches..."
-
-          # Copy SUSFS patches
+          echo "Copying SUSFS patches..."
+          # Copy SUSFS patches to root
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch ./
-          cp ../susfs4ksu/kernel_patches/fs/* ./fs/
-          cp ../susfs4ksu/kernel_patches/include/linux/* ./include/linux/
+          mkdir -p ./fs/
+          mkdir -p ./include/linux/
+          cp ../susfs4ksu/kernel_patches/fs/* ./fs/ 2>/dev/null || true
+          cp ../susfs4ksu/kernel_patches/include/linux/* ./include/linux/ 2>/dev/null || true
 
-          # Change to common directory and apply SUSFS patch
+          echo "Patching KernelSU-Next for SUSFS..."
+          cd KernelSU-Next
+          cp ../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./
+          patch -p1 < 10_enable_susfs_for_ksu.patch || true
+            
+          # Copy all fix patches for Next SUSFS support
+          cp "../../kernel_patches/next/susfs_fix_patches/v${SUSFS_VERSION}/"*.patch ./
+            
+          echo "fixing Makefile/kbuild"
+          patch -p1 < fix_Makefile.patch || true
+          echo "fixing allowlist.c"
+          patch -p1 < fix_allowlist.c.patch || true
+          echo "fixing apk_sign.c"
+          patch -p1 < fix_apk_sign.c.patch || true
+          echo "fixing kernel_umount.c"
+          patch -p1 < fix_kernel_umount.c.patch || true
+          echo "fixing ksu.c"
+          patch -p1 < fix_ksu.c.patch || true
+          echo "fixing ksud.c"
+          patch -p1 < fix_ksud.c.patch || true
+          echo "fixing selinux.c"
+          patch -p1 < fix_selinux.c.patch || true
+          echo "fixing setuid_hook.c"
+          patch -p1 < fix_setuid_hook.c.patch || true
+          echo "fixing sucompat.c"
+          patch -p1 < fix_sucompat.c.patch || true
+          echo "fixing supercalls.c"
+          patch -p1 < fix_supercalls.c.patch || true
+          echo "overwriting hook mode"
+          patch -p1 < overwrite_hook_mode.patch || true
+          echo "patching ksu_toolkit"
+          patch -p1 < ksu_toolkit.patch || true
+
+          echo "KernelSU-Next patched successfully"
+
+          # Return to kernel root and apply SUSFS patch
+          cd ..
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
-          cp ../kernel_patches/sultan/sys.c_fix.patch ./
-          patch -p1 < sys.c_fix.patch
-
-          cp ../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch ./
-          patch -p1 < base.c.patch
+          
+          # Apply version-specific fixes if they exist for a14-6.1
+          if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "6.1" ]]; then
+            if [ -f "../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch" ]; then
+              patch -p1 < ../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch || true
+            fi
+          fi
 
       - name: Configure KernelSU
         run: |
@@ -116,7 +146,7 @@ jobs:
           # KernelSU Configuration
           echo "# KernelSU Configuration" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
           echo "CONFIG_KSU=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          if [ "${{ matrix.variant }}" != "WKSU" ]; then
+          if [[ "${{ matrix.susfs }}" == "true" ]]; then
             echo "CONFIG_KSU_SUSFS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
           else
             echo "CONFIG_KSU_SUSFS=n" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
@@ -175,47 +205,24 @@ jobs:
           echo "CONFIG_IP_SET_HASH_NETIFACE=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
           echo "CONFIG_IP_SET_LIST_SET=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
 
-      - name: Minimal Droidspaces Support
-        if: ${{ matrix.variant == 'SHEDOWE' }}
-        run: |
-          cd "$CONFIG"
-          # Minimal Droidspaces Support
-          echo "# Minimal Droidspaces Support" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "# Copyright (C) 2025 ravindu644 <droidcasts@protonmail.com>" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-
-          echo "# IPC mechanisms (required for tools that rely on shared memory and IPC namespaces)" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_SYSCTL=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_SYSVIPC=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_POSIX_MQUEUE=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-
-          echo "# Core namespace support (essential for assigning PID 1 and running any init system)" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_NAMESPACES=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_PID_NS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_UTS_NS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_IPC_NS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "# Primarily needed for older kernels (3.x)" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_MNT_NS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-
-          echo "# Control groups support (required for systemd)" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_CGROUPS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_CGROUP_DEVICE=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_MEMCG=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-
-          echo "# Device filesystem support (enables hardware access when --hw-access is enabled)" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_DEVTMPFS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-
-          echo "# Firmware loading support (optional, used when --hw-access is enabled)" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_FW_LOADER=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_FW_LOADER_USER_HELPER=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-          echo "CONFIG_FW_LOADER_COMPRESS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
-      
-      - name: Run sed and perl Commands
+      - name: Set kernel localversion
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
 
-          echo "Running sed commands..."
-          sed -i 's/CONFIG_LOCALVERSION="-Sultan"/CONFIG_LOCALVERSION="-Sultan-Wild"/' ./arch/arm64/configs/${{ inputs.codename }}_defconfig
+          DEFCONFIG=./arch/arm64/configs/${{ inputs.codename }}_defconfig
+
+          if grep -q '^CONFIG_LOCALVERSION=' "$DEFCONFIG"; then
+            sed -i 's/^CONFIG_LOCALVERSION=.*/CONFIG_LOCALVERSION="-mrvokintos"/' "$DEFCONFIG"
+          else
+            echo 'CONFIG_LOCALVERSION="-mrvokintos"' >> "$DEFCONFIG"
+          fi
+
+          if grep -q '^CONFIG_LOCALVERSION_AUTO=' "$DEFCONFIG"; then
+            sed -i 's/^CONFIG_LOCALVERSION_AUTO=.*/CONFIG_LOCALVERSION_AUTO=n/' "$DEFCONFIG"
+          else
+            echo 'CONFIG_LOCALVERSION_AUTO=n' >> "$DEFCONFIG"
+          fi
 
       - name: Build the Kernel
         run: |
@@ -241,22 +248,20 @@ jobs:
             cat ./out/google-devices/zumapro/dts/*.dtb > ../AnyKernel3/dtb
           fi
 
-      - name: Create ZIP Files for Different Formats
+      - name: Prepare Artifact Name
+        id: artifact-name
         run: |
-          echo "Navigating to AnyKernel3 directory..."
-          cd ./AnyKernel3
-
-          # Zip the files in the AnyKernel3 directory with a new naming convention
-          ZIP_NAME="${{ matrix.variant }}-${{ inputs.codename }}-A16-Sultan.zip"
-          echo "Creating zip file $ZIP_NAME..."
-          zip -r "../$ZIP_NAME" ./*
+          if [[ "${{ matrix.susfs }}" == "true" ]]; then
+            echo "NAME=Next-SUSFS-${{ inputs.codename }}-A16-Sultan" >> $GITHUB_OUTPUT
+          else
+            echo "NAME=Next-${{ inputs.codename }}-A16-Sultan" >> $GITHUB_OUTPUT
+          fi
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-${{ inputs.codename }}-${{ matrix.variant }}
-          path: |
-            *.zip
+          name: ${{ steps.artifact-name.outputs.NAME }}
+          path: AnyKernel3/
 
       - name: Collect .rej files
         if: ${{ always() }}
@@ -293,12 +298,12 @@ jobs:
         run: |
           set -euo pipefail
           cd "$GITHUB_WORKSPACE"
-          zip -r "rej-${{ inputs.codename }}-${{ matrix.variant }}.zip" rej
+          zip -r "rej-${{ inputs.codename }}-Next${{ matrix.susfs == true && '-SUSFS' || '' }}.zip" rej
 
       - name: Upload .rej bundle
         if: ${{ always() && steps.collect_rej.outputs.found == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: rej-${{ inputs.codename }}-${{ matrix.variant }}
+          name: rej-${{ inputs.codename }}-Next${{ matrix.susfs == true && '-SUSFS' || '' }}
           path: |
-            rej-${{ inputs.codename }}-${{ matrix.variant }}.zip
+            rej-${{ inputs.codename }}-Next${{ matrix.susfs == true && '-SUSFS' || '' }}.zip

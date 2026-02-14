@@ -6,9 +6,46 @@ permissions:
   
 on:
   workflow_dispatch:
+    inputs:
+
+      build_with_susfs:
+        description: 'Include SUSFS? (if true, builds both w/ and w/o SUSFS)'
+        required: true
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+        default: 'false'
+
+      upload_type:
+        description: 'Upload Type'
+        required: true
+        type: choice
+        options:
+          - 'artifact'
+          - 'pre-release'
+          - 'release'
+        default: 'artifact'
+
+      build_gs201:
+        description: 'Build for GS201 (Pixel 7/7 Pro/7a)?'
+        required: false
+        type: boolean
+        default: true
+      build_zuma:
+        description: 'Build for Zuma (Pixel 8/8 Pro/8a)?'
+        required: false
+        type: boolean
+        default: true
+      build_zumapro:
+        description: 'Build for ZumaPro (Pixel 9/9 Pro/9 Pro XL/9 Pro Fold)?'
+        required: false
+        type: boolean
+        default: true
         
 jobs:
   build-kernel-gs201:
+    if: ${{ inputs.build_gs201 == true }}
     uses: ./.github/workflows/sultan.yml
     secrets: inherit
     with:
@@ -16,8 +53,10 @@ jobs:
       repo: "android_kernel_google_gs201"
       android_version: "android14"
       kernel_version: "6.1"
+      build_with_susfs: ${{ inputs.build_with_susfs == 'true' }}
       
   build-kernel-zuma:
+    if: ${{ inputs.build_zuma == true }}
     uses: ./.github/workflows/sultan.yml
     secrets: inherit
     with:
@@ -25,8 +64,10 @@ jobs:
       repo: "android_kernel_google_zuma"
       android_version: "android14"
       kernel_version: "6.1"
+      build_with_susfs: ${{ inputs.build_with_susfs == 'true' }}
 
   build-kernel-zumapro:
+    if: ${{ inputs.build_zumapro == true }}
     uses: ./.github/workflows/sultan.yml
     secrets: inherit
     with:
@@ -34,53 +75,122 @@ jobs:
       repo: "android_kernel_google_zumapro"
       android_version: "android14"
       kernel_version: "6.1"
+      build_with_susfs: ${{ inputs.build_with_susfs == 'true' }}
 
   trigger-release:
+    if: ${{ inputs.upload_type != 'artifact' }}
     runs-on: ubuntu-latest
     needs:
         - build-kernel-gs201
         - build-kernel-zuma
         - build-kernel-zumapro
     env:
-      REPO_OWNER: TheWildJames
+      REPO_OWNER: mrvokintos
       REPO_NAME: Sultan_KernelSU_SUSFS
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      RELEASE_NAME: "Sultan Kernels With KernelSU Next & SUSFS v2.0.0"
-      RELEASE_NOTES: |
-        This release contains KernelSU Next and SUSFS v2.0.0
-        
-        ⚠️ **COMPATIBILITY NOTICE** ⚠️
-        Please ensure compatibility!
-        
-        Module: 
-        -> https://github.com/sidex15/ksu_module_susfs
-        
-        Managers:
-        -> https://github.com/WildKernels/Wild_KSU
-        
-        Features:
-        [+] Wild KSU
-        [+] SUSFS v2.0.0
+      RELEASE_NAME: "Sultan Kernels With KernelSU Next & SUSFS"
 
     steps:
       # Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Get KernelSU Next version // inspired by https://github.com/TheSillyOk/sh/blob/main/get_ksuver.sh
+      - name: Get KernelSU Next Version
+        id: ksu_version
+        run: |
+          OWNER="KernelSU-Next"
+          REPO="KernelSU-Next"
+          REF="dev"
+          API_URL="https://api.github.com"
+          
+          # Get commit count
+          COMMIT_COUNT=$(curl --silent -I -H "Accept: application/vnd.github.v3+json" "$API_URL/repos/$OWNER/$REPO/commits?sha=$REF&per_page=1" | grep -i "^link:" | sed -n 's/.*page=\([0-9]*\)>; rel="last".*/\1/p')
+          if [ -z "$COMMIT_COUNT" ]; then
+            COMMIT_COUNT=$(curl --silent -H "Accept: application/vnd.github.v3+json" "$API_URL/repos/$OWNER/$REPO/commits?sha=$REF&per_page=100" | jq '. | length')
+          fi
+          
+          echo "Commit count: $COMMIT_COUNT"
+          
+          # Try to get formula from Kbuild or Makefile
+          FORMULA_FILE=""
+          for file in Kbuild Makefile; do
+            for type in "refs/heads/" "refs/tags/" "/"; do
+              curl -LSs "https://github.com/$OWNER/$REPO/raw/${type}${REF}/kernel/$file" > temp_file 2>/dev/null || continue
+              
+              if grep -q "KSU_VERSION" temp_file 2>/dev/null; then
+                FORMULA_FILE="temp_file"
+                echo "Found formula in: $file (type: $type)"
+                break 2
+              fi
+              rm -f temp_file
+            done
+          done
+          
+          if [ -z "$FORMULA_FILE" ]; then
+            echo "Error: Could not find KSU version formula"
+            KSUN_VERSION="unknown"
+          else
+            # Extract version formula
+            FORMULA_LINE=$(grep -E 'KSU_VERSION *:?=.*?(KSU_GIT[^_]*_VERSION|rev-list)' "$FORMULA_FILE" || true)
+            echo "Formula line: $FORMULA_LINE"
+            
+            if [[ "$FORMULA_LINE" == *"KSU"* ]]; then
+              # Extract math expression
+              MATH_EXPR=$(echo "$FORMULA_LINE" | sed 's/.*expr //;s/))//' | xargs)
+              echo "Math expression: $MATH_EXPR"
+              
+              if [ -n "$MATH_EXPR" ]; then
+                # Replace variables with commit count and calculate
+                CALC_STRING=$(echo "$MATH_EXPR" | sed -E "s/\\$\((KSU_GIT_VERSION|KSU_GITHUB_VERSION_COMMIT)\)|\\$\(shell.*rev-list[^\)]*\)/$COMMIT_COUNT/;s/\)//;s/\(//")
+                echo "Calculation string: $CALC_STRING"
+                KSUN_VERSION=$(echo "$CALC_STRING" | bc)
+              fi
+            fi
+            
+            # If still empty, try to find hardcoded version
+            if [ -z "$KSUN_VERSION" ]; then
+              KSUN_VERSION=$(grep -E '^ccflags-y \+= -DKSU_VERSION=[0-9]+' "$FORMULA_FILE" | head -n 1 | grep -oP '[0-9]+' || true)
+            fi
+            
+            rm -f temp_file
+          fi
+          
+          # Get commit hash for URL
+          KSUN_COMMIT=$(git ls-remote https://github.com/$OWNER/$REPO.git $REF | awk '{print $1}')
+          KSUN_URL="https://github.com/$OWNER/$REPO/commit/${KSUN_COMMIT}"
+          
+          echo "KSUN_VERSION=${KSUN_VERSION}" >> $GITHUB_ENV
+          echo "KSUN_URL=${KSUN_URL}" >> $GITHUB_ENV
+          
+          echo "KernelSU Next version: ${KSUN_VERSION}"
+          echo "Commit URL: ${KSUN_URL}"
+
       # Get the Latest Tag from GitHub
       - name: Generate and Create New Tag
         run: |
-            # Fetch the latest tag from GitHub (this is the latest tag based on the GitHub API)
-            LATEST_TAG=$(gh api repos/$REPO_OWNER/$REPO_NAME/tags --jq '.[0].name')
+            # Fetch the latest tag from GitHub (using git ls-remote to ensure we get the absolute latest)
+            # Filter for tags matching vX.X.X format and sort them by version
+            LATEST_TAG=$(git ls-remote --tags origin | awk -F/ '{print $3}' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
+            
             if [ -z "$LATEST_TAG" ]; then
-              LATEST_TAG="v2.0.0-r0"  # Default to v1.5.7-0 if no tag exists
+              NEW_TAG="v1.0.0"
+              echo "No existing tags found. Starting with $NEW_TAG"
+            else
+              echo "Latest remote tag found: $LATEST_TAG"
+              
+              # Extract version numbers (e.g., v1.2.3 -> 1, 2, 3)
+              VERSION=$(echo "$LATEST_TAG" | sed 's/^v//')
+              MAJOR=$(echo "$VERSION" | cut -d. -f1)
+              MINOR=$(echo "$VERSION" | cut -d. -f2)
+              PATCH=$(echo "$VERSION" | cut -d. -f3)
+              
+              # Increment patch version
+              PATCH=$((PATCH + 1))
+              NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+              
+              echo "Incremented to: $NEW_TAG"
             fi
-            
-            # Increment the suffix (e.g., v1.5.7-0 becomes v1.5.7-1)
-            NEW_TAG=$(echo "$LATEST_TAG" | awk -F'-r' '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-r%d", $1, suffix}')
-            
-            # Output the new tag to be used
-            echo "New tag: $NEW_TAG"
             
             # Set the new tag as an environment variable to be used in later steps
             echo "NEW_TAG=${NEW_TAG}" >> $GITHUB_ENV
@@ -95,28 +205,63 @@ jobs:
         with:
           path: ./downloaded-artifacts
 
-      # Create GitHub Release and upload files if make_release is true
+      # Generate Release Notes
+      - name: Generate Release Notes
+        run: |
+          cat << EOF > release_notes.md
+          This release contains KernelSU Next and SUSFS
+          Fork by [mrvokintos](https://github.com/mrvokintos)
+
+          ### Versions:
+          - **KernelSU Next**: [${{ env.KSUN_VERSION }}](${{ env.KSUN_URL }})
+          - **SUSFS**: [v2.0.0](https://gitlab.com/simonpunk/susfs4ksu/-/tree/gki-android14-6.1)
+
+          ### Links:
+          - **KernelSU Next Manager**: https://t.me/ksunext_ci
+          - **SUSFS Module**: https://github.com/sidex15/ksu_module_susfs
+          EOF
+
+      # Create GitHub Release and upload files
       - name: Create GitHub Release
+        id: create_release
         uses: actions/create-release@v1
         with:
-          tag_name: ${{ env.NEW_TAG }}  # Use the generated tag for the release
-          release_name: ${{ env.RELEASE_NAME }}  # Pass the RELEASE_NAME to the action
-          body: ${{ env.RELEASE_NOTES }}  # Pass the RELEASE_NOTES to the action
+          tag_name: ${{ env.NEW_TAG }}
+          release_name: ${{ env.RELEASE_NAME }}
+          body_path: release_notes.md
+          prerelease: ${{ inputs.upload_type == 'pre-release' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Release Assets Dynamically
         run: |
-          # Loop through all files in the downloaded-artifacts directory
-          for file in ./downloaded-artifacts/kernel-*/*; do
-              # Skip directories
-              if [ -d "$file" ]; then
+          # Loop through all directories in the downloaded-artifacts directory
+          # Each directory corresponds to an artifact
+          cd ./downloaded-artifacts
+          
+          # Custom sort: by device (gs201, zuma, zumapro), then by type (Next before Next-SUSFS)
+          # This creates a sort key by replacing SUSFS with a character that sorts after regular Next
+          for dir in $(ls -1 | sed 's/Next-SUSFS/Next~SUSFS/g' | sort | sed 's/Next~SUSFS/Next-SUSFS/g'); do
+              # Skip if not a directory
+              if [ ! -d "$dir" ]; then
+                  continue
+              fi
+              
+              # Skip .rej bundles (debug artifacts)
+              if [[ "$dir" == rej-* ]]; then
+                  echo "Skipping debug artifact: $dir"
                   continue
               fi
 
+              echo "Zipping artifact: $dir..."
+              # Navigate into the directory to zip contents at root
+              cd "$dir"
+              zip -r "../${dir}.zip" ./*
+              cd ..
+              
               # Upload the file to the GitHub release
-              echo "Uploading $file..."
-              gh release upload ${{ env.NEW_TAG }} "$file"
+              echo "Uploading ${dir}.zip..."
+              gh release upload ${{ env.NEW_TAG }} "${dir}.zip"
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
