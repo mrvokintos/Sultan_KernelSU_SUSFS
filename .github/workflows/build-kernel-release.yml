@@ -8,6 +8,18 @@ on:
   workflow_dispatch:
     inputs:
 
+      sep_build_options:
+        description: '⬇️ BUILD OPTIONS ⬇️'
+        required: false
+        type: boolean
+        default: false
+
+      build_with_susfs:
+        description: 'Build with SUSFS (if enabled, builds both with and without SUSFS)'
+        required: false
+        type: boolean
+        default: false
+
       sep_devices:
         description: '⬇️ DEVICES ⬇️'
         required: false
@@ -40,6 +52,7 @@ jobs:
       repo: "android_kernel_google_gs201"
       android_version: "android14"
       kernel_version: "6.1"
+      build_with_susfs: ${{ inputs.build_with_susfs }}
       
   build-kernel-zuma:
     if: ${{ inputs.build_zuma == true }}
@@ -50,6 +63,7 @@ jobs:
       repo: "android_kernel_google_zuma"
       android_version: "android14"
       kernel_version: "6.1"
+      build_with_susfs: ${{ inputs.build_with_susfs }}
 
   build-kernel-zumapro:
     if: ${{ inputs.build_zumapro == true }}
@@ -60,6 +74,7 @@ jobs:
       repo: "android_kernel_google_zumapro"
       android_version: "android14"
       kernel_version: "6.1"
+      build_with_susfs: ${{ inputs.build_with_susfs }}
 
   trigger-release:
     runs-on: ubuntu-latest
@@ -94,27 +109,27 @@ jobs:
       - name: Generate and Create New Tag
         run: |
             # Fetch the latest tag from GitHub (using git ls-remote to ensure we get the absolute latest)
-            # Filter for tags matching vX.X.X-rX format and sort them by version
-            LATEST_TAG=$(git ls-remote --tags origin | awk -F/ '{print $3}' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-r[0-9]+$' | sort -V | tail -n1)
+            # Filter for tags matching vX.X.X format and sort them by version
+            LATEST_TAG=$(git ls-remote --tags origin | awk -F/ '{print $3}' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
             
             if [ -z "$LATEST_TAG" ]; then
-              LATEST_TAG="v1.0.0-r0"
-              echo "No existing tags found. Starting with $LATEST_TAG"
+              NEW_TAG="v1.0.0"
+              echo "No existing tags found. Starting with $NEW_TAG"
             else
               echo "Latest remote tag found: $LATEST_TAG"
+              
+              # Extract version numbers (e.g., v1.2.3 -> 1, 2, 3)
+              VERSION=$(echo "$LATEST_TAG" | sed 's/^v//')
+              MAJOR=$(echo "$VERSION" | cut -d. -f1)
+              MINOR=$(echo "$VERSION" | cut -d. -f2)
+              PATCH=$(echo "$VERSION" | cut -d. -f3)
+              
+              # Increment patch version
+              PATCH=$((PATCH + 1))
+              NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+              
+              echo "Incremented to: $NEW_TAG"
             fi
-            
-            # Extract base version and suffix
-            # e.g., v2.0.0-r5 -> v2.0.0 and 5
-            BASE_VERSION=$(echo "$LATEST_TAG" | awk -F'-r' '{print $1}')
-            SUFFIX=$(echo "$LATEST_TAG" | awk -F'-r' '{print $2}')
-            
-            # Increment suffix
-            NEW_SUFFIX=$((SUFFIX + 1))
-            NEW_TAG="${BASE_VERSION}-r${NEW_SUFFIX}"
-            
-            # Output the new tag to be used
-            echo "New tag: $NEW_TAG"
             
             # Set the new tag as an environment variable to be used in later steps
             echo "NEW_TAG=${NEW_TAG}" >> $GITHUB_ENV

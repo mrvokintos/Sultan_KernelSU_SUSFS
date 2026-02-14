@@ -18,6 +18,10 @@ on:
       kernel_version:
         required: true
         type: string
+      build_with_susfs:
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build-kernel:
@@ -26,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        susfs: [true, false]
+        susfs: ${{ inputs.build_with_susfs && fromJSON('[true, false]') || fromJSON('[false]') }}
     steps:
       - name: Download and extract GCC 14.2.0 toolchain
         run: |
