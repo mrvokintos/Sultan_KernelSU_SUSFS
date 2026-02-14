@@ -87,23 +87,32 @@ jobs:
       REPO_NAME: Sultan_KernelSU_SUSFS
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RELEASE_NAME: "Sultan Kernels With KernelSU Next & SUSFS v2.0.0"
-      RELEASE_NOTES: |
-        This release contains KernelSU Next and SUSFS v2.0.0
-
-        Module: 
-        -> https://github.com/sidex15/ksu_module_susfs
-        
-        Manager:
-        -> https://t.me/ksunext_ci
-        
-        Features:
-        [+] KernelSU Next
-        [+] SUSFS v2.0.0
 
     steps:
       # Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
+
+      # Get KernelSU Next version
+      - name: Get KernelSU Next Version
+        id: ksu_version
+        run: |
+          # Get the latest commit hash from KernelSU-Next dev branch
+          KSUN_COMMIT=$(git ls-remote https://github.com/KernelSU-Next/KernelSU-Next.git dev | awk '{print $1}')
+          KSUN_SHORT_COMMIT=$(echo $KSUN_COMMIT | cut -c1-7)
+          
+          # Get version from version file
+          KSUN_VERSION=$(curl -s "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev/kernel/ksu_version" | head -n1 || echo "unknown")
+          
+          # Create version string
+          KSUN_FULL_VERSION="${KSUN_VERSION} (${KSUN_SHORT_COMMIT})"
+          KSUN_URL="https://github.com/KernelSU-Next/KernelSU-Next/commit/${KSUN_COMMIT}"
+          
+          echo "KSUN_VERSION=${KSUN_FULL_VERSION}" >> $GITHUB_ENV
+          echo "KSUN_URL=${KSUN_URL}" >> $GITHUB_ENV
+          
+          echo "KernelSU Next version: ${KSUN_FULL_VERSION}"
+          echo "Commit URL: ${KSUN_URL}"
 
       # Get the Latest Tag from GitHub
       - name: Generate and Create New Tag
@@ -144,13 +153,32 @@ jobs:
         with:
           path: ./downloaded-artifacts
 
+      # Generate Release Notes
+      - name: Generate Release Notes
+        run: |
+          cat << EOF > release_notes.md
+          This release contains KernelSU Next and SUSFS v2.0.0
+
+          ### Versions:
+          - **KernelSU Next**: [${{ env.KSUN_VERSION }}](${{ env.KSUN_URL }})
+          - **SUSFS**: v2.0.0
+
+          ### Links:
+          - **SUSFS Module**: https://github.com/sidex15/ksu_module_susfs
+          - **KernelSU Next Manager**: https://t.me/ksunext_ci
+
+          ### Features:
+          - [+] KernelSU Next ${{ env.KSUN_VERSION }}
+          - [+] SUSFS v2.0.0
+          EOF
+
       # Create GitHub Release and upload files if make_release is true
       - name: Create GitHub Release
         uses: actions/create-release@v1
         with:
           tag_name: ${{ env.NEW_TAG }}  # Use the generated tag for the release
           release_name: ${{ env.RELEASE_NAME }}  # Pass the RELEASE_NAME to the action
-          body: ${{ env.RELEASE_NOTES }}  # Pass the RELEASE_NOTES to the action
+          body_path: release_notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
