@@ -25,11 +25,11 @@ Follow the steps for GKI:
 
 # Credits
 
-- **KernelSU-Next**: Developed by [rifsxd](https://github.com/KernelSU-Next/KernelSU-Next).
-- **SUSFS**: Developed by [simonpunk](https://gitlab.com/simonpunk/susfs4ksu.git).
-- **SUSFS Module**: Developed by [sidex15](https://github.com/sidex15).
-- **Sultan Kernels**: Developed by [kerneltoast](https://github.com/kerneltoast).
-- **OG Repo**: Developed by [TheWildJames](https://github.com/TheWildJames/Sultan_KernelSU_SUSFS).
+- **KernelSU-Next**: Developed by [rifsxd](https://github.com/KernelSU-Next/KernelSU-Next)
+- **SUSFS**: Developed by [simonpunk](https://gitlab.com/simonpunk/susfs4ksu.git)
+- **SUSFS Module**: Developed by [sidex15](https://github.com/sidex15)
+- **Sultan Kernels**: Developed by [kerneltoast](https://github.com/kerneltoast)
+- **OG Repo**: Developed by [TheWildJames](https://github.com/TheWildJames/Sultan_KernelSU_SUSFS)
 
 Special thanks to the open-source community for their contributions!
 
@@ -37,13 +37,13 @@ Special thanks to the open-source community for their contributions!
 
 # Support
 
-If you encounter any problems or need help, feel free to open the issue in this repository or contact me on [Telegram](https://t.me/mr_vokintos).
+If you encounter any problems or need help, feel free to open the issue in this repository or contact me on [Telegram](https://t.me/mr_vokintos)
 
 ---
 
 # Disclaimer
 
-Flashing this kernel will void your warranty, and there is always a risk of bricking your device. Please make sure to back up your data and ensure you understand the risks before proceeding.
+Flashing this kernel will void your warranty, and there is always a risk of bricking your device. Please make sure to back up your data and ensure you understand the risks before proceeding
 
 **Proceed at your own risk!**
 
