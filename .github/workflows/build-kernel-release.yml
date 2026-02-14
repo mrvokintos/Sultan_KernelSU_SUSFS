@@ -27,24 +27,18 @@ on:
           - 'release'
         default: 'artifact'
 
-      sep_devices:
-        description: '⬇️ DEVICES ⬇️'
-        required: false
-        type: choice
-        options:
-
       build_gs201:
-        description: 'Build for GS201 (Pixel 7/7 Pro/7a)'
+        description: 'Build for GS201 (Pixel 7/7 Pro/7a)?'
         required: false
         type: boolean
         default: true
       build_zuma:
-        description: 'Build for Zuma (Pixel 8/8 Pro/8a)'
+        description: 'Build for Zuma (Pixel 8/8 Pro/8a)?'
         required: false
         type: boolean
         default: true
       build_zumapro:
-        description: 'Build for ZumaPro (Pixel 9/9 Pro/9 Pro XL/9 Pro Fold)'
+        description: 'Build for ZumaPro (Pixel 9/9 Pro/9 Pro XL/9 Pro Fold)?'
         required: false
         type: boolean
         default: true
