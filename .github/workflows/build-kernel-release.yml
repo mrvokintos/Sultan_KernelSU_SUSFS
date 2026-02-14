@@ -35,12 +35,12 @@ on:
         description: 'Build for Zuma (Pixel 8/8 Pro/8a)'
         required: false
         type: boolean
-        default: false
+        default: true
       build_zumapro:
         description: 'Build for ZumaPro (Pixel 9/9 Pro/9 Pro XL/9 Pro Fold)'
         required: false
         type: boolean
-        default: false
+        default: true
         
 jobs:
   build-kernel-gs201:
