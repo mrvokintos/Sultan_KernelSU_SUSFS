@@ -8,12 +8,6 @@ on:
   workflow_dispatch:
     inputs:
 
-      sep_build_options:
-        description: '⬇️ BUILD OPTIONS ⬇️'
-        required: false
-        type: boolean
-        default: false
-
       build_with_susfs:
         description: 'Include SUSFS? (if true, builds both w/ and w/o SUSFS)'
         required: true
@@ -36,8 +30,8 @@ on:
       sep_devices:
         description: '⬇️ DEVICES ⬇️'
         required: false
-        type: boolean
-        default: false
+        type: choice
+        options:
 
       build_gs201:
         description: 'Build for GS201 (Pixel 7/7 Pro/7a)'
