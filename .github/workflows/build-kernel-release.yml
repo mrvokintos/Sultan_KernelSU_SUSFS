@@ -68,24 +68,21 @@ jobs:
         - build-kernel-zuma
         - build-kernel-zumapro
     env:
-      REPO_OWNER: TheWildJames
+      REPO_OWNER: mrvokintos
       REPO_NAME: Sultan_KernelSU_SUSFS
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       RELEASE_NAME: "Sultan Kernels With KernelSU Next & SUSFS v2.0.0"
       RELEASE_NOTES: |
         This release contains KernelSU Next and SUSFS v2.0.0
-        
-        ⚠️ **COMPATIBILITY NOTICE** ⚠️
-        Please ensure compatibility!
-        
+
         Module: 
         -> https://github.com/sidex15/ksu_module_susfs
         
-        Managers:
-        -> https://github.com/WildKernels/Wild_KSU
+        Manager:
+        -> https://t.me/ksunext_ci
         
         Features:
-        [+] Wild KSU
+        [+] KernelSU Next
         [+] SUSFS v2.0.0
 
     steps:

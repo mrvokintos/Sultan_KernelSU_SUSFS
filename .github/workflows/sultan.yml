@@ -19,8 +19,6 @@ on:
         required: true
         type: string
 
-      # SUSFS toggle removed: build both SUSFS and non-SUSFS variants via matrix
-
 jobs:
   build-kernel:
     name: build-kernel-sultan-kernelsu-next${{ matrix.susfs == true && '-susfs' || '' }}
