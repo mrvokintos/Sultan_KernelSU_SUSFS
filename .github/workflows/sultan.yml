@@ -143,13 +143,6 @@ jobs:
             echo "Applying sys.c_fix.patch..."
             patch -p1 < ../kernel_patches/sultan/sys.c_fix.patch || true
           fi
-          
-          # Apply version-specific fixes if they exist for a14-6.1
-          if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "6.1" ]]; then
-            if [ -f "../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch" ]; then
-              patch -p1 < ../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch || true
-            fi
-          fi
 
       - name: Configure KernelSU
         run: |
