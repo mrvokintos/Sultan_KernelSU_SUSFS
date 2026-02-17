@@ -1,11 +1,31 @@
 # Sultan Kernels for Android
 
+Automated builds of Sultan kernels with KernelSU-Next and SUSFS support for Google Tensor devices.
+
+---
+
+# Supported Devices
+
+- **GS201** (Pixel 7, 7 Pro, 7a)
+- **Zuma** (Pixel 8, 8 Pro, 8a)
+- **ZumaPro** (Pixel 9, 9 Pro, 9 Pro XL, 9 Pro Fold)
+
+---
+
+# Build Variants
+
+Each device has two build variants:
+- **Next**: KernelSU-Next only
+- **Next-SUSFS**: KernelSU-Next + SUSFS (root hiding)
+
 ---
 
 # Links:
 
-- [Kernel Patches](https://github.com/WildKernels/kernel_patches)<br>
+- [Kernel Patches](https://github.com/mrvokintos/kernel_patches)
 - [Kernel Source](https://github.com/kerneltoast/android_kernel_google_tensynos)
+- [KernelSU-Next Manager](https://t.me/ksunext_ci)
+- [SUSFS Module](https://github.com/sidex15/ksu_module_susfs)
 
 ---
 
@@ -20,16 +40,18 @@ Follow the steps for GKI:
 
 - **KernelSU Next**: An advanced kernel-based root solution for Android
 - **SUSFS**: An addon root hiding kernel patches and userspace module for KernelSU
+- **Automated CI/CD**: Built automatically via GitHub Actions
+- **Sultan Optimizations**: Performance and stability improvements from Sultan kernels
 
 ---
 
 # Credits
 
+- **OG Repo**: Developed by [TheWildJames](https://github.com/TheWildJames/Sultan_KernelSU_SUSFS)
 - **KernelSU-Next**: Developed by [rifsxd](https://github.com/KernelSU-Next/KernelSU-Next)
 - **SUSFS**: Developed by [simonpunk](https://gitlab.com/simonpunk/susfs4ksu.git)
 - **SUSFS Module**: Developed by [sidex15](https://github.com/sidex15)
 - **Sultan Kernels**: Developed by [kerneltoast](https://github.com/kerneltoast)
-- **OG Repo**: Developed by [TheWildJames](https://github.com/TheWildJames/Sultan_KernelSU_SUSFS)
 
 Special thanks to the open-source community for their contributions!
 

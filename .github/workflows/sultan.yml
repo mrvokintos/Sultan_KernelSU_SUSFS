@@ -133,6 +133,17 @@ jobs:
           cd ..
           patch -p1 < 50_add_susfs_in_gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}.patch || true
           
+          # Apply Sultan-specific patches for tensynos kernel
+          echo "Applying Sultan-specific patches..."
+          if [ -f "../kernel_patches/sultan/fix_base.c.patch" ]; then
+            echo "Applying fix_base.c.patch..."
+            patch -p1 < ../kernel_patches/sultan/fix_base.c.patch || true
+          fi
+          if [ -f "../kernel_patches/sultan/sys.c_fix.patch" ]; then
+            echo "Applying sys.c_fix.patch..."
+            patch -p1 < ../kernel_patches/sultan/sys.c_fix.patch || true
+          fi
+          
           # Apply version-specific fixes if they exist for a14-6.1
           if [[ "${{ inputs.android_version }}" == "android14" && "${{ inputs.kernel_version }}" == "6.1" ]]; then
             if [ -f "../kernel_patches/wild/susfs_fix_patches/v${SUSFS_VERSION}/a14-6.1/base.c.patch" ]; then
