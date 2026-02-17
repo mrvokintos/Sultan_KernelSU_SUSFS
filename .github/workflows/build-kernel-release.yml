@@ -166,6 +166,24 @@ jobs:
           echo "KernelSU Next version: ${KSUN_VERSION}"
           echo "Commit URL: ${KSUN_URL}"
 
+      # Get SUSFS version and commit
+      - name: Get SUSFS Version
+        id: susfs_version
+        run: |
+          OWNER="simonpunk"
+          REPO="susfs4ksu"
+          REF="gki-android14-6.1"
+          
+          # Get latest commit hash
+          SUSFS_COMMIT=$(git ls-remote https://gitlab.com/$OWNER/$REPO.git $REF | awk '{print $1}' | cut -c1-7)
+          SUSFS_URL="https://gitlab.com/$OWNER/$REPO/-/commit/${SUSFS_COMMIT}"
+          
+          echo "SUSFS_COMMIT=${SUSFS_COMMIT}" >> $GITHUB_ENV
+          echo "SUSFS_URL=${SUSFS_URL}" >> $GITHUB_ENV
+          
+          echo "SUSFS commit: ${SUSFS_COMMIT}"
+          echo "Commit URL: ${SUSFS_URL}"
+
       # Get the Latest Tag from GitHub
       - name: Generate and Create New Tag
         run: |
@@ -214,7 +232,7 @@ jobs:
 
           ### Versions:
           - **KernelSU Next**: [${{ env.KSUN_VERSION }}](${{ env.KSUN_URL }})
-          - **SUSFS**: [v2.0.0](https://gitlab.com/simonpunk/susfs4ksu/-/tree/gki-android14-6.1)
+          - **SUSFS**: [v2.0.0](https://gitlab.com/simonpunk/susfs4ksu/-/tree/gki-android14-6.1) [(${{ env.SUSFS_COMMIT }})](${{ env.SUSFS_URL }})
 
           ### Links:
           - **KernelSU Next Manager**: https://t.me/ksunext_ci
