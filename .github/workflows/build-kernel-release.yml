@@ -175,7 +175,7 @@ jobs:
           REF="gki-android14-6.1"
           
           # Get latest commit hash
-          SUSFS_COMMIT=$(git ls-remote https://gitlab.com/$OWNER/$REPO.git $REF | awk '{print $1}' | cut -c1-7)
+          SUSFS_COMMIT=$(git ls-remote https://gitlab.com/$OWNER/$REPO.git $REF | awk '{print $1}' | cut -c1-8)
           SUSFS_URL="https://gitlab.com/$OWNER/$REPO/-/commit/${SUSFS_COMMIT}"
           
           echo "SUSFS_COMMIT=${SUSFS_COMMIT}" >> $GITHUB_ENV
@@ -228,6 +228,7 @@ jobs:
         run: |
           cat << EOF > release_notes.md
           This release contains KernelSU Next and SUSFS
+          
           Fork by [mrvokintos](https://github.com/mrvokintos)
 
           ### Versions:
