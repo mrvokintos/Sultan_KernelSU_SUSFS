@@ -74,6 +74,7 @@ jobs:
         run: |
           cd "$CONFIG"
           patch -p1 < ../kernel_patches/sultan/pkvm_s2mpu_legacy_make.patch
+          patch -p1 < ../kernel_patches/sultan/wild_legacy_make_compat.patch
 
       - name: Add KernelSU-Next
         run: |
