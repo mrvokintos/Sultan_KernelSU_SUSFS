@@ -63,18 +63,12 @@ jobs:
           # Clone repositories using the branch names
           git clone https://github.com/TheWildJames/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
           git clone https://github.com/mrvokintos/kernel_patches.git
-          git clone https://github.com/TheWildJames/android_kernel_google_tensynos -b 16.0.0-sultan --depth=1
+          git clone https://github.com/mrvokintos/android_kernel_google_tensynos -b 16.0.0-sultan --depth=1
           if [[ "${{ matrix.susfs }}" == "true" ]]; then
             SUSFS_BRANCH="gki-${{ inputs.android_version }}-${{ inputs.kernel_version }}"
             echo "Using branch for SUSFS: $SUSFS_BRANCH"
             git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
           fi
-
-      - name: Apply Sultan source compatibility patches
-        run: |
-          cd "$CONFIG"
-          patch -p1 < ../kernel_patches/sultan/pkvm_s2mpu_legacy_make.patch
-          patch -p1 < ../kernel_patches/sultan/wild_legacy_make_compat.patch
 
       - name: Add KernelSU-Next
         run: |
